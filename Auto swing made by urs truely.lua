@@ -1,0 +1,341 @@
+--// Services
+local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+
+local Player = Players.LocalPlayer
+
+
+--// Remove old GUI
+local OldGui = Player.PlayerGui:FindFirstChild("AutoSwingMenu")
+if OldGui then
+	OldGui:Destroy()
+end
+
+
+--// Values
+local XValue = -70
+local YValue = 370
+local ZValue = -330
+
+local AutoSwing = false
+
+
+
+--// Hit Function
+local function RunScript()
+
+	local Event = game:GetService("ReplicatedStorage").Remotes.Hit
+
+	local HitPosition = Vector3.new(
+		XValue,
+		YValue,
+		ZValue
+	)
+
+	Event:FireServer(
+		HitPosition,
+		"perfect"
+	)
+
+	print("Hit:", HitPosition)
+
+end
+
+
+
+--// Pitch Detection
+local PitchEvent = game:GetService("ReplicatedStorage").Remotes.PitchStarted
+
+PitchEvent.OnClientEvent:Connect(function()
+
+	if AutoSwing then
+		RunScript()
+	end
+
+end)
+
+
+
+--// GUI
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "AutoSwingMenu"
+ScreenGui.ResetOnSpawn = false
+ScreenGui.Parent = Player:WaitForChild("PlayerGui")
+
+
+
+local Main = Instance.new("Frame")
+Main.Size = UDim2.new(0,320,0,300)
+Main.Position = UDim2.new(0.5,-160,0.5,-150)
+Main.BackgroundColor3 = Color3.fromRGB(20,20,25)
+Main.Active = true
+Main.Parent = ScreenGui
+
+
+
+local Corner = Instance.new("UICorner")
+Corner.CornerRadius = UDim.new(0,16)
+Corner.Parent = Main
+
+
+
+local Stroke = Instance.new("UIStroke")
+Stroke.Thickness = 2
+Stroke.Color = Color3.fromRGB(80,80,100)
+Stroke.Parent = Main
+
+
+
+--// Dragging
+local dragging = false
+local dragStart
+local startPos
+
+
+Main.InputBegan:Connect(function(input)
+
+	if input.UserInputType == Enum.UserInputType.MouseButton1 then
+
+		dragging = true
+		dragStart = input.Position
+		startPos = Main.Position
+
+	end
+
+end)
+
+
+Main.InputEnded:Connect(function(input)
+
+	if input.UserInputType == Enum.UserInputType.MouseButton1 then
+
+		dragging = false
+
+	end
+
+end)
+
+
+UserInputService.InputChanged:Connect(function(input)
+
+	if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+
+		local delta = input.Position - dragStart
+
+		Main.Position = UDim2.new(
+			startPos.X.Scale,
+			startPos.X.Offset + delta.X,
+			startPos.Y.Scale,
+			startPos.Y.Offset + delta.Y
+		)
+
+	end
+
+end)
+
+
+
+--// Title
+local Title = Instance.new("TextLabel")
+
+Title.Size = UDim2.new(1,0,0,50)
+Title.Text = "⚾ Auto Swingerer"
+Title.TextSize = 22
+Title.Font = Enum.Font.GothamBold
+Title.BackgroundTransparency = 1
+Title.TextColor3 = Color3.fromRGB(255,255,255)
+Title.Parent = Main
+--// Slider Creator
+local function CreateSlider(Name, YPos, Min, Max, Default)
+
+	local Label = Instance.new("TextLabel")
+
+	Label.Size = UDim2.new(1,-40,0,25)
+	Label.Position = UDim2.new(0,20,0,YPos)
+	Label.Text = Name.."   "..Default
+	Label.TextSize = 16
+	Label.Font = Enum.Font.GothamMedium
+	Label.TextXAlignment = Enum.TextXAlignment.Left
+	Label.TextColor3 = Color3.fromRGB(220,220,220)
+	Label.BackgroundTransparency = 1
+	Label.Parent = Main
+
+
+
+	local Bar = Instance.new("Frame")
+
+	Bar.Size = UDim2.new(0.8,0,0,10)
+	Bar.Position = UDim2.new(0.1,0,0,YPos+28)
+	Bar.BackgroundColor3 = Color3.fromRGB(70,70,80)
+	Bar.Parent = Main
+
+
+	local BarCorner = Instance.new("UICorner")
+	BarCorner.CornerRadius = UDim.new(1,0)
+	BarCorner.Parent = Bar
+
+
+
+	local Knob = Instance.new("TextButton")
+
+	Knob.Size = UDim2.new(0,18,0,18)
+
+	Knob.Position = UDim2.new(
+		(Default-Min)/(Max-Min),
+		-9,
+		0.5,
+		-9
+	)
+
+	Knob.Text = ""
+	Knob.BackgroundColor3 = Color3.fromRGB(255,255,255)
+	Knob.Parent = Bar
+
+
+	local KnobCorner = Instance.new("UICorner")
+	KnobCorner.CornerRadius = UDim.new(1,0)
+	KnobCorner.Parent = Knob
+
+
+
+	local SliderDragging = false
+
+
+	Knob.MouseButton1Down:Connect(function()
+
+		SliderDragging = true
+
+	end)
+
+
+
+	UserInputService.InputChanged:Connect(function(input)
+
+		if SliderDragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+
+
+			local Percent = math.clamp(
+				(input.Position.X - Bar.AbsolutePosition.X) / Bar.AbsoluteSize.X,
+				0,
+				1
+			)
+
+
+			Knob.Position = UDim2.new(
+				Percent,
+				-9,
+				0.5,
+				-9
+			)
+
+
+			local Value = math.floor(
+				Min + ((Max-Min) * Percent)
+			)
+
+
+			Label.Text = Name.."   "..Value
+
+
+
+			if Name == "X" then
+
+				XValue = Value
+
+			elseif Name == "Y" then
+
+				YValue = Value
+
+			elseif Name == "Z" then
+
+				ZValue = Value
+
+			end
+
+		end
+
+	end)
+
+
+
+	UserInputService.InputEnded:Connect(function(input)
+
+		if input.UserInputType == Enum.UserInputType.MouseButton1 then
+
+			SliderDragging = false
+
+		end
+
+	end)
+
+end
+
+
+
+--// Create Sliders
+
+CreateSlider("X",60,-1000,0,XValue)
+
+CreateSlider("Y",115,0,1000,YValue)
+
+CreateSlider("Z",170,-1000,0,ZValue)
+
+
+
+--// Auto Swing Button
+
+local AutoButton = Instance.new("TextButton")
+
+AutoButton.Size = UDim2.new(0.8,0,0,45)
+AutoButton.Position = UDim2.new(0.1,0,0,240)
+
+AutoButton.Text = "⚾ AUTO SWING: OFF"
+AutoButton.TextSize = 18
+AutoButton.Font = Enum.Font.GothamBold
+AutoButton.TextColor3 = Color3.new(1,1,1)
+AutoButton.BackgroundColor3 = Color3.fromRGB(170,50,50)
+AutoButton.Parent = Main
+
+
+
+local ButtonCorner = Instance.new("UICorner")
+ButtonCorner.CornerRadius = UDim.new(0,10)
+ButtonCorner.Parent = AutoButton
+
+
+
+AutoButton.MouseButton1Click:Connect(function()
+
+	AutoSwing = not AutoSwing
+
+
+	if AutoSwing then
+
+		AutoButton.Text = "⚾ AUTO SWING: ON"
+		AutoButton.BackgroundColor3 = Color3.fromRGB(50,170,80)
+
+	else
+
+		AutoButton.Text = "⚾ AUTO SWING: OFF"
+		AutoButton.BackgroundColor3 = Color3.fromRGB(170,50,50)
+
+	end
+
+end)
+
+
+
+--// K Hide/Show
+
+UserInputService.InputBegan:Connect(function(input, processed)
+
+	if processed then return end
+
+
+	if input.KeyCode == Enum.KeyCode.K then
+
+		Main.Visible = not Main.Visible
+
+	end
+
+end)
